@@ -1,0 +1,70 @@
+name: Build Aseprite v1.3.15.2 (Windows)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Download Skia prebuilt
+        shell: pwsh
+        run: |
+          $skiaZip = "$PWD\skia.zip"
+          $skiaDir = "$PWD\deps\skia"
+          New-Item -ItemType Directory -Force -Path "deps"
+          Invoke-WebRequest -Uri "https://github.com/aseprite/skia/releases/download/m124-08a5439a6b/skia-windows-Release-x64.zip" -OutFile $skiaZip
+          Expand-Archive -Path $skiaZip -DestinationPath "$PWD\deps_temp"
+          Move-Item "$PWD\deps_temp" $skiaDir
+          echo "SKIA_DIR=$skiaDir" >> $env:GITHUB_ENV
+
+      - name: Download Aseprite source
+        shell: pwsh
+        run: |
+          $sourceZip = "$PWD\aseprite.zip"
+          $sourceDir = "$PWD\Aseprite-v1.3.15.2-Source"
+          Invoke-WebRequest -Uri "https://github.com/aseprite/aseprite/releases/download/v1.3.15.2/Aseprite-v1.3.15.2-Source.zip" -OutFile $sourceZip
+          New-Item -ItemType Directory -Force -Path $sourceDir
+          Expand-Archive -Path $sourceZip -DestinationPath $sourceDir
+
+      - name: Setup MSVC Developer Command Prompt
+        uses: TheMrMilchmann/setup-msvc-dev@v4
+        with:
+          arch: x64
+
+      - name: Configure (CMake with Ninja + MSVC)
+        shell: pwsh
+        run: |
+          cmake -S "$PWD\Aseprite-v1.3.15.2-Source" `
+                -B "$PWD\build" `
+                -G Ninja `
+                -DCMAKE_BUILD_TYPE=RelWithDebInfo `
+                -DLAF_BACKEND=skia `
+                -DSKIA_DIR="$env:SKIA_DIR" `
+                -DSKIA_LIBRARY_DIR="$env:SKIA_DIR\out\Release-x64" `
+                -DSKIA_LIBRARY="$env:SKIA_DIR\out\Release-x64\skia.lib" `
+                -DCMAKE_INCLUDE_PATH="$env:SKIA_DIR\include" `
+                -DCMAKE_INSTALL_PREFIX="$PWD\dist" `
+                -DCMAKE_IGNORE_PATH="C:/mingw64"
+
+      - name: Build Aseprite
+        shell: pwsh
+        run: cmake --build "$PWD\build" --config RelWithDebInfo --target aseprite
+
+      - name: Install Aseprite
+        shell: pwsh
+        run: cmake --install "$PWD\build" --config RelWithDebInfo
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aseprite-windows
+          path: build/bin
