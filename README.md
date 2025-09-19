@@ -16,7 +16,7 @@ This guide provides instructions to build Aseprite specifically for Windows usin
 
 ## Quick Setup
 
-1. Get the **build-windows-dp.yaml** from [here](https://github.com/MengheangHeak/aseprite_build/blob/main/.github/workflows/build-windows-dp.yaml)
+1. Get the **build-windows-dp.yaml** from [here](https://github.com/MengheangHeak/aseprite-cloud-built/blob/main/.github/workflows/build-windows-dp.yml)
 
 2. Create a new repository on GitHub
 
